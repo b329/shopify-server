@@ -15,7 +15,8 @@ const googleMapsClient = createClient({
 
 async function getDistance(originCity: string, city: string, streetAddress: string, province: string): Promise<string> {
     try {
-        const fullAddress = `${streetAddress}, ${city}, ${province}`;
+        const fullAddressParts = [streetAddress, city, province].filter((value) => value !== null);
+        const fullAddress = fullAddressParts.join(', ');
 
         const geocodeResponse: ClientResponse<any> = await googleMapsClient.geocode({ address: fullAddress }).asPromise();
         const results = geocodeResponse.json.results;
@@ -55,13 +56,16 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
 
     // the body of the data received
     const data = req.body;
-    // console.log(data['shipping_address'])
-    const shippingAddress = data['shipping_address'];
+    console.log(data['billing_address'])
+    const shippingAddress = data['billing_address'];
     const address = shippingAddress['address1'];
     const city =shippingAddress['city'];
     const province = shippingAddress['province'];
 
-    const originCity = 'New York, NY';
+    const total_price = data['total_price'];
+    const sub_total_price = data['subtotal_price'];
+
+    const originCity = 'Ho Chi Minh';
     // const streetAddress = '123 Main Street';
 
     try {
