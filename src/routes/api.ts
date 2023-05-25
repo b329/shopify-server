@@ -1,7 +1,48 @@
 import express, { Request, Response } from 'express';
-import {LATEST_API_VERSION, shopifyApi} from "@shopify/shopify-api";
-
+import {LATEST_API_VERSION, shopifyApi, DeliveryMethod } from "@shopify/shopify-api";
+import bodyParser from 'body-parser';
+import dotenv from 'dotenv';
+import { createClient, ClientResponse }from '@google/maps';
 const router = express.Router();
+
+dotenv.config();
+const googleApiKey: string = process.env.GOOGLE_API_KEY || '';
+
+const googleMapsClient = createClient({
+    key: googleApiKey,
+    Promise: Promise
+});
+
+async function getDistance(originCity: string, city: string, streetAddress: string, province: string): Promise<string> {
+    try {
+        const fullAddress = `${streetAddress}, ${city}, ${province}`;
+
+        const geocodeResponse: ClientResponse<any> = await googleMapsClient.geocode({ address: fullAddress }).asPromise();
+        const results = geocodeResponse.json.results;
+
+        if (results.length > 0) {
+            const targetLocation = results[0].geometry.location;
+            const targetPlaceId = results[0].place_id;
+
+            const distanceResponse: ClientResponse<any> = await googleMapsClient.distanceMatrix({
+                origins: [originCity],
+                destinations: ['place_id:' + targetPlaceId],
+            }).asPromise();
+
+            const distance = distanceResponse.json.rows[0].elements[0].distance.text;
+            return distance;
+        } else {
+            throw new Error('No results found for the given address.');
+        }
+    } catch (error) {
+        throw new Error('Error geocoding the address: ' + JSON.stringify(error));
+    }
+}
+
+router.use(bodyParser.json());
+router.use(bodyParser.urlencoded({
+    extended: true,
+}));
 
 // shopify 의 callbak url 은 post 로만 가능하다.
 router.post('/', (req: Request, res: Response) => {
@@ -10,39 +51,28 @@ router.post('/', (req: Request, res: Response) => {
     res.send(jsonData);
 });
 
-router.get('/users', (req: Request, res: Response) => {
-    const users = [
-        { id: 1, name: 'John' },
-        { id: 2, name: 'Jane' },
-        { id: 3, name: 'Bob' },
-    ];
+router.post('/cartCreation',async(req: Request, res: Response) => {
 
-    res.json(users);
-});
+    // the body of the data received
+    const data = req.body;
+    // console.log(data['shipping_address'])
+    const shippingAddress = data['shipping_address'];
+    const address = shippingAddress['address1'];
+    const city =shippingAddress['city'];
+    const province = shippingAddress['province'];
 
-router.get('/shopifyAuth', (req: Request, res: Response) => {
+    const originCity = 'New York, NY';
+    // const streetAddress = '123 Main Street';
 
-    const shopify = shopifyApi({
-        apiVersion: LATEST_API_VERSION,
-        isEmbeddedApp: false,
-        restResources: undefined,
-        // The next 4 values are typically read from environment variables for added security
-        apiKey: '9e52c4a632f53c358aba0a8363519551',
-        apiSecretKey: 'fe1fc79b069234d7b19c0edecc2c802e',
-        scopes: ['read_products'],
-        hostName: 'https://9cd1-218-153-85-41.ngrok-free.app'
-    });
+    try {
+        const distance = await getDistance(originCity, city, address, province);
+        console.log(distance);
 
-    console.log(shopify);
-    res.json(shopify);
-});
-
-router.post('/users', (req: Request, res: Response) => {
-    const { name } = req.body;
-
-    // 이 부분에서 데이터베이스에 사용자를 추가하거나 다른 작업을 수행할 수 있습니다.
-
-    res.send(`User ${name} created!`);
+        res.send(data);
+    } catch (error) {
+    console.error('Error:', error);
+    res.status(500).send('An error occurred.');
+}
 });
 
 export default router;
