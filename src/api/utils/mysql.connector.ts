@@ -13,6 +13,7 @@ export const init = () => {
       connectionLimit: dataSource.DB_CONNECTION_LIMIT,
       host: dataSource.DB_HOST,
       user: dataSource.DB_USER,
+      port: +dataSource.DB_PORT,
       password: dataSource.DB_PASSWORD,
       database: dataSource.DB_DATABASE,
     });

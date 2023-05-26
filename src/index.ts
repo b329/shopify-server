@@ -10,7 +10,9 @@ import '@shopify/shopify-api/adapters/node';
 import {shopifyApi, LATEST_API_VERSION} from '@shopify/shopify-api';
 import express from 'express';
 import apiRouter from './routes/api';
+import routes from './api/routes';
 // import {logger} from "sequelize/types/utils/logger";
+
 const app = express();
 const port = 8000;
 
@@ -43,6 +45,7 @@ app.use(cors());
 
 
 app.use('/api', apiRouter);
+app.use('/region', routes);
 
 app.listen(port, () => {
     console.log(`Server is listening on port ${port}`);
