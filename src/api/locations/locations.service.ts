@@ -17,6 +17,10 @@ export const getLocationById = async (id: ILocation['id']) => {
     return execute<ILocation>(LocationQueries.GetLocationsById, [id]);
 };
 
+export const getLocationByName = async (name: ILocation['region']) => {
+    return execute<ILocation>(LocationQueries.GetLocationsByName, [name]);
+};
+
 /**
  * adds a new active team record
  */

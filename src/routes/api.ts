@@ -1,12 +1,14 @@
-import express, { Request, Response } from 'express';
+import express, {Request, response, Response} from 'express';
 import {LATEST_API_VERSION, shopifyApi, DeliveryMethod } from "@shopify/shopify-api";
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import { createClient, ClientResponse }from '@google/maps';
+import {createClient, ClientResponse, GeocodingResult} from '@google/maps';
+import {getLocationById, getLocationByName} from "../api/locations/locations.service";
 const router = express.Router();
 
 dotenv.config();
 const googleApiKey: string = process.env.GOOGLE_API_KEY || '';
+console.log(googleApiKey)
 
 const googleMapsClient = createClient({
     key: googleApiKey,
@@ -38,6 +40,29 @@ async function getDistance(originCity: string, city: string, streetAddress: stri
     } catch (error) {
         throw new Error('Error geocoding the address: ' + JSON.stringify(error));
     }
+}
+
+async function getCityFromAddress(city: string, streetAddress: string, province: string): Promise<string | null> {
+    try {
+        const fullAddressParts = [streetAddress, city, province].filter((value) => value !== null);
+        const fullAddress = fullAddressParts.join(', ');
+
+        const geocodeResponse: ClientResponse<any> = await googleMapsClient.geocode({ address: fullAddress }).asPromise();
+        const results = geocodeResponse.json.results;
+
+        if (results.length > 0) {
+            const targetCity = results[0].address_components.find((component:any) =>
+                component.types.includes('locality')
+            );
+            if (targetCity) {
+                return targetCity.long_name;
+            }
+        }
+    } catch (error) {
+        console.error('Error geocoding the address:', error);
+    }
+
+    return null;
 }
 
 router.use(bodyParser.json());
@@ -72,13 +97,33 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
     const sub_total_price = data['subtotal_price'];
 
     const originCity = 'Ho Chi Minh';
-    // const streetAddress = '123 Main Street';
+    const streetAddress = '123 Main Street';
 
     try {
-        const distance = await getDistance(originCity, city, address, province);
-        console.log(distance);
+        // 거리계산 함수.
+        // const city = 'Ha';
+        // const address = 'Trường Đại Học Kinh Tế Quốc Dân';
+        // const province = '';
 
-        res.send(data);
+        // const distance = await getDistance(originCity, city, address, province);
+        // console.log(distance);
+        // 도시명만 추출하는 함수.
+        // const cityName = await getCityFromAddress(city, address, province);
+        // console.log(cityName);
+
+        const getLocation = await getLocationByName('Hanoi');
+        console.log(getLocation);
+        if (!getLocation) {
+            // getLocation 배열이 비어 있는 경우
+            // 처리할 내용 작성
+            console.log(getLocation)
+        } else {
+            // getLocation 배열에 결과가 있는 경우
+            // 처리할 내용 작성
+            console.log(getLocation)
+        }
+
+        res.send(getLocation);
     } catch (error) {
     console.error('Error:', error);
     res.status(500).send('An error occurred.');
