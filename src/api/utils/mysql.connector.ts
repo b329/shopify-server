@@ -31,6 +31,7 @@ throw new Error('failed to initialized pool');
  * @param {string[] | Object} params - provide the parameterized values used
  * in the query
  */
+
 export const execute = <T>(query: string, params: string[] | Object): Promise<T> => {
   try {
     if (!pool) throw new Error('Pool was not created. Ensure pool is created when running the app.');
