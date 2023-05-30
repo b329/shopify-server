@@ -11,12 +11,15 @@ export const getLocations = async () => {
 };
 
 /**
- * gets a team based on id provided
+ * gets a location based on id provided
  */
 export const getLocationById = async (id: ILocation['id']) => {
     return execute<ILocation>(LocationQueries.GetLocationsById, [id]);
 };
 
+/**
+ * gets a location based on region provided from database.
+ */
 export const getLocationByName = async (name: ILocation['region']) => {
     return execute<ILocation>(LocationQueries.GetLocationsByName, [name]);
 };

@@ -4,11 +4,15 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import {createClient, ClientResponse, GeocodingResult} from '@google/maps';
 import {getLocationById, getLocationByName} from "../api/locations/locations.service";
+import axios, { AxiosResponse } from 'axios';
+
 const router = express.Router();
 
 dotenv.config();
 const googleApiKey: string = process.env.GOOGLE_API_KEY || '';
+const shopifyAccessToken: string = process.env.SHOPIFY_ACCESS_TOKEN || '';
 console.log(googleApiKey)
+console.log(shopifyAccessToken)
 
 const googleMapsClient = createClient({
     key: googleApiKey,
@@ -70,16 +74,30 @@ router.use(bodyParser.urlencoded({
     extended: true,
 }));
 
-router.get('/', (req: Request, res: Response) => {
+router.get('/in', (req: Request, res: Response) => {
     const jsonData =
-        { "rates": [ { "service_name": "canadapost-overnight", "service_code": "ON", "total_price": "1295", "description": "This is the fastest option by far", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" }, { "service_name": "fedex-2dayground", "service_code": "2D", "total_price": "2934", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" }, { "service_name": "fedex-priorityovernight", "service_code": "1D", "total_price": "3587", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
+        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "20000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
+    res.send(jsonData);
+});
+
+router.get('/out', (req: Request, res: Response) => {
+    const jsonData =
+        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "29000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
     res.send(jsonData);
 });
 
 // shopify 의 callbak url 은 post 로만 가능하다.
-router.post('/', (req: Request, res: Response) => {
+// city 가 range 범위 안에 있을때
+router.post('/in', (req: Request, res: Response) => {
     const jsonData =
-        { "rates": [ { "service_name": "canadapost-overnight", "service_code": "ON", "total_price": "1295", "description": "This is the fastest option by far", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" }, { "service_name": "fedex-2dayground", "service_code": "2D", "total_price": "2934", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" }, { "service_name": "fedex-priorityovernight", "service_code": "1D", "total_price": "3587", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
+        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "20000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
+    res.send(jsonData);
+});
+
+// city 가 range 범위 밖에 있을때
+router.post('/out', (req: Request, res: Response) => {
+    const jsonData =
+        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "29000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
     res.send(jsonData);
 });
 
@@ -104,24 +122,59 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
         // const city = 'Ha';
         // const address = 'Trường Đại Học Kinh Tế Quốc Dân';
         // const province = '';
-
+        //
         // const distance = await getDistance(originCity, city, address, province);
         // console.log(distance);
         // 도시명만 추출하는 함수.
-        // const cityName = await getCityFromAddress(city, address, province);
+        const cityName = await getCityFromAddress(city, address, province);
         // console.log(cityName);
 
         const getLocation = await getLocationByName('Hanoi');
         console.log(getLocation);
+
+        // Shopify API 호출. in/ out 에 따라서 처리.
+        // id: 65040482548 값은 변경될 수 있음. 일단 Shopify API 의 기능이 동작하는지 확인하기 위해 빠르게 적용함.
+
+        const apiUrl = 'https://gomicorp.myshopify.com/admin/api/2023-04/carrier_services/65040482548.json';
+        const accessToken = shopifyAccessToken;
+        let requestData;
+        const headers = {
+            'X-Shopify-Access-Token': accessToken,
+            'Content-Type': 'application/json',
+        };
         if (!getLocation) {
-            // getLocation 배열이 비어 있는 경우
-            // 처리할 내용 작성
+            requestData = {
+                carrier_service: {
+                    id: 65040482548,
+                    name: 'cityRange',
+                    active: 'On',
+                    callback_url: 'https://9a85-218-153-85-41.ngrok-free.app/api/in',
+                    service_discovery: true,
+                },
+            };
             console.log(getLocation)
         } else {
-            // getLocation 배열에 결과가 있는 경우
-            // 처리할 내용 작성
+            requestData = {
+                carrier_service: {
+                    id: 65040482548,
+                    name: 'cityRange',
+                    active: 'On',
+                    callback_url: 'https://9a85-218-153-85-41.ngrok-free.app/api/out',
+                    service_discovery: true,
+                },
+            };
             console.log(getLocation)
         }
+        // Request 를 getLocation 에 따라서 정해지면 그 내용으로 axios 로 PUT 요청.
+        axios
+            .put(apiUrl, requestData, { headers })
+            .then(() => {
+                console.log('CarrierService 업데이트 성공');
+            })
+            .catch((error) => {
+                console.error('CarrierService 업데이트 실패');
+                console.error(error.response.data);
+            });
 
         res.send(getLocation);
     } catch (error) {

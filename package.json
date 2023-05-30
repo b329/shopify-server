@@ -24,6 +24,7 @@
     "@types/dotenv": "^8.2.0",
     "@types/google__maps": "^0.5.16",
     "@types/googlemaps": "^3.43.3",
+    "axios": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
