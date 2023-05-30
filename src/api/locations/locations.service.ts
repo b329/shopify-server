@@ -20,7 +20,7 @@ export const getLocationById = async (id: ILocation['id']) => {
 /**
  * gets a location based on region provided from database.
  */
-export const getLocationByName = async (name: ILocation['region']) => {
+export const getLocationByName = async (name: string | null) => {
     return execute<ILocation>(LocationQueries.GetLocationsByName, [name]);
 };
 

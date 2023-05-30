@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import {createClient, ClientResponse, GeocodingResult} from '@google/maps';
 import {getLocationById, getLocationByName} from "../api/locations/locations.service";
 import axios, { AxiosResponse } from 'axios';
+import {ILocationArray} from "../api/locations/locations.model";
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ async function getCityFromAddress(city: string, streetAddress: string, province:
 
         if (results.length > 0) {
             const targetCity = results[0].address_components.find((component:any) =>
-                component.types.includes('locality')
+                component.types.includes('administrative_area_level_1')
             );
             if (targetCity) {
                 return targetCity.long_name;
@@ -82,7 +83,7 @@ router.get('/in', (req: Request, res: Response) => {
 
 router.get('/out', (req: Request, res: Response) => {
     const jsonData =
-        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "29000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
+        { "rates": [ { "service_name": "cityOutOfRange", "service_code": "ON", "total_price": "29000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
     res.send(jsonData);
 });
 
@@ -90,26 +91,27 @@ router.get('/out', (req: Request, res: Response) => {
 // city 가 range 범위 안에 있을때
 router.post('/in', (req: Request, res: Response) => {
     const jsonData =
-        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "20000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
+        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "2000000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
     res.send(jsonData);
 });
 
 // city 가 range 범위 밖에 있을때
 router.post('/out', (req: Request, res: Response) => {
     const jsonData =
-        { "rates": [ { "service_name": "cityRange", "service_code": "ON", "total_price": "29000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
+        { "rates": [ { "service_name": "outOfCityRange", "service_code": "ON", "total_price": "2900000", "description": "This is the fixed fee in a range", "currency": "VND", "min_delivery_date": "2013-04-12 14:48:45 -0400", "max_delivery_date": "2024-04-12 14:48:45 -0400" } ] }
     res.send(jsonData);
 });
 
 router.post('/cartCreation',async(req: Request, res: Response) => {
 
     // the body of the data received
+    try {
     const data = req.body;
     console.log(data['billing_address'])
     const shippingAddress = data['billing_address'];
-    const address = shippingAddress['address1'];
-    const city =shippingAddress['city'];
-    const province = shippingAddress['province'];
+    const address = shippingAddress?.address1;
+    const city = shippingAddress?.city;
+    const province = shippingAddress?.province;
 
     const total_price = data['total_price'];
     const sub_total_price = data['subtotal_price'];
@@ -117,7 +119,6 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
     const originCity = 'Ho Chi Minh';
     const streetAddress = '123 Main Street';
 
-    try {
         // 거리계산 함수.
         // const city = 'Ha';
         // const address = 'Trường Đại Học Kinh Tế Quốc Dân';
@@ -127,9 +128,9 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
         // console.log(distance);
         // 도시명만 추출하는 함수.
         const cityName = await getCityFromAddress(city, address, province);
-        // console.log(cityName);
+        console.log(cityName);
 
-        const getLocation = await getLocationByName('Hanoi');
+        const getLocation = await getLocationByName(cityName);
         console.log(getLocation);
 
         // Shopify API 호출. in/ out 에 따라서 처리.
@@ -142,13 +143,14 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
             'X-Shopify-Access-Token': accessToken,
             'Content-Type': 'application/json',
         };
-        if (!getLocation) {
+        // @ts-ignore
+        if (!getLocation ||  getLocation.length === 0) {
             requestData = {
                 carrier_service: {
                     id: 65040482548,
-                    name: 'cityRange',
+                    name: 'cityOutOfRange',
                     active: 'On',
-                    callback_url: 'https://9a85-218-153-85-41.ngrok-free.app/api/in',
+                    callback_url: 'https://9a85-218-153-85-41.ngrok-free.app/api/out',
                     service_discovery: true,
                 },
             };
@@ -159,7 +161,7 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
                     id: 65040482548,
                     name: 'cityRange',
                     active: 'On',
-                    callback_url: 'https://9a85-218-153-85-41.ngrok-free.app/api/out',
+                    callback_url: 'https://9a85-218-153-85-41.ngrok-free.app/api/in',
                     service_discovery: true,
                 },
             };
