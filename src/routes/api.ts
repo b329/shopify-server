@@ -138,14 +138,14 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
 
         const apiUrl = 'https://gomicorp.myshopify.com/admin/api/2023-04/carrier_services/65040482548.json';
         const accessToken = shopifyAccessToken;
-        let requestData;
         const headers = {
             'X-Shopify-Access-Token': accessToken,
             'Content-Type': 'application/json',
         };
         // @ts-ignore
         if (!getLocation ||  getLocation.length === 0) {
-            requestData = {
+            console.log('getLocation is null or empty');
+            const requestData = {
                 carrier_service: {
                     id: 65040482548,
                     name: 'cityOutOfRange',
@@ -155,8 +155,22 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
                 },
             };
             console.log(getLocation)
+            // Request 를 getLocation 에 따라서 정해지면 그 내용으로 axios 로 PUT 요청.
+            axios
+                .put(apiUrl, requestData, { headers })
+                .then(() => {
+                    // @ts-ignore
+                    console.log(requestData.carrier_service.callback_url)
+                    console.log('CarrierService 업데이트 성공 is null or empty');
+
+                })
+                .catch((error) => {
+                    console.error('CarrierService 업데이트 실패');
+                    console.error(error.response.data);
+                });
         } else {
-            requestData = {
+            console.log('getLocation is in city Range');
+            const requestData = {
                 carrier_service: {
                     id: 65040482548,
                     name: 'cityRange',
@@ -166,18 +180,20 @@ router.post('/cartCreation',async(req: Request, res: Response) => {
                 },
             };
             console.log(getLocation)
-        }
-        // Request 를 getLocation 에 따라서 정해지면 그 내용으로 axios 로 PUT 요청.
-        axios
-            .put(apiUrl, requestData, { headers })
-            .then(() => {
-                console.log('CarrierService 업데이트 성공');
-            })
-            .catch((error) => {
-                console.error('CarrierService 업데이트 실패');
-                console.error(error.response.data);
-            });
+            // Request 를 getLocation 에 따라서 정해지면 그 내용으로 axios 로 PUT 요청.
+            axios
+                .put(apiUrl, requestData, { headers })
+                .then(() => {
+                    // @ts-ignore
+                    console.log(requestData.carrier_service.callback_url)
+                    console.log('CarrierService 업데이트 성공 getLocation is in city Range');
 
+                })
+                .catch((error) => {
+                    console.error('CarrierService 업데이트 실패');
+                    console.error(error.response.data);
+                });
+        }
         res.send(getLocation);
     } catch (error) {
     console.error('Error:', error);
