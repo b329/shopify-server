@@ -6,7 +6,7 @@
     "clean": "rimraf ./build",
     "test": "jest",
     "build": "npm run clean && tsc",
-    "start": "node src",
+    "start": "ts-node src",
     "local": "ts-node src",
     "local:watch": "nodemon src -e ts,json --exec 'npm run local'",
     "lint": "eslint src",
